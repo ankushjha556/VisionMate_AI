@@ -1,0 +1,8 @@
+streamlit
+ultralytics
+easyocr
+pyspellchecker
+gTTS
+tensorflow
+Pillow
+numpy
