@@ -178,19 +178,7 @@ pip install -r requirements.txt
 streamlit run app.py          # test locally first
 ```
 
-To deploy permanently: push this repo to a **public** GitHub repo, then go to
-[share.streamlit.io](https://share.streamlit.io) → sign in with GitHub → point a new app at
-`streamlit_app/app.py`. Upload your trained `currency_classifier.keras` into the same folder to
-enable the Currency Detection tab. This covers Modules 1–3 with an always-on link.
-
-**Alternative: Hugging Face Spaces (`hf_space/`)** — this app covers all 5 modules, but as of
-mid-2026, Hugging Face changed free-tier policy: only **Static** Spaces stay free, while Gradio and
-Docker SDKs now require a paid PRO plan. If you have PRO access (or this changes again in the
-future), `hf_space/app.py` is ready to deploy as-is.
-
-**Quick temporary link (no deployment at all):** from inside the Colab notebook, run
-`demo.launch(share=True)` on the Gradio app to get a public `*.gradio.live` link valid for 72 hours
-— useful for sharing something *today* while a permanent deployment is pending.
+Live app: https://visionmateai-hxmbvotnkqqswfegciqfmb.streamlit.app/
 
 ## Zero-Cost Stack
 
@@ -226,5 +214,5 @@ MIT — free to use, modify, and build on.
 
 ## Author
 
-Built by Ankush, B.S. Computer Science & Data Analytics, IIT Patna — a flagship portfolio project
+Built by Ankush, B.S. Computer Science & Data Analytics, IIT Patna — this portfolio project
 combining computer vision, edge-AI-aware engineering, and human-centered accessible design.
