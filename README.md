@@ -1,13 +1,12 @@
 # 👁️ VisionMate AI
 
-**An AI-powered assistive companion for visually impaired users** — built as a flagship data
-science portfolio project by a B.S. Computer Science & Data Analytics student at IIT Patna.
+**An AI-powered assistive companion for visually impaired users**
 
 > Camera + voice in → AI reasoning → spoken guidance out. Five working modules, one consistent
 > architecture, and a zero-cost build from end to end.
 
 [![Notebook](https://img.shields.io/badge/notebook-Google%20Colab-orange)](notebooks/VisionMate_Master.ipynb)
-[![Demo](https://img.shields.io/badge/demo-Streamlit-red)](streamlit_app/app.py)
+[![Demo](https://img.shields.io/badge/demo-Streamlit-red)](https://visionmateai-hxmbvotnkqqswfegciqfmb.streamlit.app/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
 [![Status](https://img.shields.io/badge/status-active%20development-brightgreen)]()
 
