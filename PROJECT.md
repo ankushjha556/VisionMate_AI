@@ -8,12 +8,6 @@ another student or in an interview, not like a polished spec sheet.
 
 ## Why I started this
 
-I'm a second-year B.S. Computer Science & Data Analytics student at IIT Patna, and I wanted a
-flagship project — something that would actually stand out on a resume next to the usual
-fraud-detection / brain-tumor-segmentation / intrusion-detection projects everyone builds off a
-Kaggle dataset. Those are fine projects, but they're all "train a model on a CSV" — nobody outside
-data science really understands what they do or why they matter.
-
 I wanted something that:
 - Solves a real problem for real people, not just a benchmark number
 - Forces me to combine multiple areas (CV, edge AI thinking, real-time systems, human-centered
