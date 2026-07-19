@@ -5,7 +5,6 @@ torchvision
 easyocr
 pyspellchecker
 gTTS
-tensorflow-cpu
 opencv-python-headless
 numpy
 Pillow
