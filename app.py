@@ -1,8 +1,16 @@
 """
-VisionMate AI — Streamlit Demo
-Live demo of Modules 1 (Scene Understanding), 2 (OCR), and 3 (Currency Detection).
+VisionMate AI — Streamlit Demo (permanent, free-tier-safe version)
 
-Run with: streamlit run app.py
+Fixes vs. the earlier version:
+- Models load lazily, one at a time, only when their tab is opened — not all five
+  loaded at once on app start. This is the main fix for free-tier memory crashes.
+- Every model load is wrapped in try/except with a readable on-screen error instead
+  of a silent crash.
+- requirements.txt now pins compatible versions and includes torch/torchvision
+  explicitly (previously implicit, which caused resolver issues on some hosts).
+
+Run locally with: streamlit run app.py
+Deploy at: https://share.streamlit.io (free, persistent link, public GitHub repo required)
 """
 
 import io
@@ -16,31 +24,6 @@ from gtts import gTTS
 
 st.set_page_config(page_title="VisionMate AI — Demo", page_icon="👁️", layout="centered")
 
-# ------------------------------------------------------------------
-# Cached model loaders — each model loads once per session, not per interaction
-# ------------------------------------------------------------------
-
-@st.cache_resource
-def load_yolo():
-    from ultralytics import YOLO
-    return YOLO("yolo11n.pt")
-
-
-@st.cache_resource
-def load_ocr_reader():
-    import easyocr
-    return easyocr.Reader(["en"], gpu=False)
-
-
-@st.cache_resource
-def load_currency_model():
-    model_path = "currency_classifier.keras"
-    if not os.path.exists(model_path):
-        return None
-    from tensorflow.keras.models import load_model
-    return load_model(model_path)
-
-
 CURRENCY_LABELS = [
     "1Hundrednote", "2Hundrednote", "2Thousandnote", "5Hundrednote",
     "Fiftynote", "Tennote", "Twentynote",
@@ -52,7 +35,46 @@ DENOMINATION_MAP = {
 }
 
 # ------------------------------------------------------------------
-# Shared reasoning helpers (same logic as the master notebook)
+# Lazy, cached, individually-failable model loaders.
+# Each returns (model_or_None, error_message_or_None) so the UI can show
+# a clean message instead of the whole app crashing.
+# ------------------------------------------------------------------
+
+@st.cache_resource(show_spinner=False)
+def load_yolo():
+    try:
+        from ultralytics import YOLO
+        return YOLO("yolo11n.pt"), None
+    except Exception as e:
+        return None, f"Couldn't load the object detection model: {e}"
+
+
+@st.cache_resource(show_spinner=False)
+def load_ocr_reader():
+    try:
+        import easyocr
+        return easyocr.Reader(["en"], gpu=False), None
+    except Exception as e:
+        return None, f"Couldn't load the text-reading model: {e}"
+
+
+@st.cache_resource(show_spinner=False)
+def load_currency_model():
+    model_path = "currency_classifier.keras"
+    if not os.path.exists(model_path):
+        return None, (
+            "currency_classifier.keras not found in this app's folder. "
+            "Train it in the master notebook, then upload it to this repo to enable this tab."
+        )
+    try:
+        from tensorflow.keras.models import load_model
+        return load_model(model_path), None
+    except Exception as e:
+        return None, f"Couldn't load the currency model: {e}"
+
+
+# ------------------------------------------------------------------
+# Reasoning helpers — identical logic to the master notebook
 # ------------------------------------------------------------------
 
 def get_spatial_zone(x_center, image_width):
@@ -79,7 +101,7 @@ def reason_scene(results, image_width, min_confidence=0.35):
     priority_classes = {"person", "car", "bus", "truck", "motorcycle", "bicycle"}
 
     def sort_key(item):
-        (cls_name, zone), count = item
+        (cls_name, _zone), count = item
         return (0 if cls_name in priority_classes else 1, -count)
 
     sentences = []
@@ -159,7 +181,9 @@ def speak(text: str) -> bytes:
 st.title("👁️ VisionMate AI")
 st.caption(
     "An AI-powered assistive companion for visually impaired users. "
-    "Upload an image to try Scene Understanding, Text Reading, and Currency Detection."
+    "Upload an image to try Scene Understanding, Text Reading, and Currency Detection. "
+    "Each tab loads its model only when you use it, to keep this app light and stable "
+    "on free hosting."
 )
 
 tab1, tab2, tab3 = st.tabs(["🖼️ Scene Understanding", "📝 Text Reading (OCR)", "💵 Currency Detection"])
@@ -174,19 +198,23 @@ with tab1:
         image = Image.open(uploaded_scene).convert("RGB")
         st.image(image, caption="Uploaded image", use_container_width=True)
 
-        with st.spinner("Detecting objects..."):
-            yolo_model = load_yolo()
-            temp_path = "temp_scene.jpg"
-            image.save(temp_path)
-            results = yolo_model(temp_path, conf=0.25)
-            image_width = results[0].orig_shape[1]
-            annotated = results[0].plot()[:, :, ::-1]
+        with st.spinner("Loading detection model (first use only)..."):
+            yolo_model, err = load_yolo()
 
-        st.image(annotated, caption="Detected objects", use_container_width=True)
+        if err:
+            st.error(err)
+        else:
+            with st.spinner("Detecting objects..."):
+                temp_path = "temp_scene.jpg"
+                image.save(temp_path)
+                results = yolo_model(temp_path, conf=0.25)
+                image_width = results[0].orig_shape[1]
+                annotated = results[0].plot()[:, :, ::-1]
 
-        description = reason_scene(results, image_width)
-        st.success(f"**Spoken description:** {description}")
-        st.audio(speak(description), format="audio/mp3")
+            st.image(annotated, caption="Detected objects", use_container_width=True)
+            description = reason_scene(results, image_width)
+            st.success(f"**Spoken description:** {description}")
+            st.audio(speak(description), format="audio/mp3")
 
 # --- Tab 2: OCR ---
 with tab2:
@@ -198,38 +226,42 @@ with tab2:
         image = Image.open(uploaded_text).convert("RGB")
         st.image(image, caption="Uploaded image", use_container_width=True)
 
-        with st.spinner("Reading text..."):
-            reader = load_ocr_reader()
-            temp_path = "temp_ocr.jpg"
-            image.save(temp_path)
-            ocr_results = reader.readtext(temp_path)
-            raw_text, skipped = reason_ocr(ocr_results, min_confidence=0.5)
-            corrected_text, corrections = correct_ocr_text(raw_text)
+        with st.spinner("Loading text-reading model (first use only)..."):
+            reader, err = load_ocr_reader()
 
-        if corrections:
-            st.info(f"Auto-corrected: {', '.join(f'{a} → {b}' for a, b in corrections)}")
-        st.success(f"**Spoken text:** {corrected_text}")
-        st.audio(speak(corrected_text), format="audio/mp3")
+        if err:
+            st.error(err)
+        else:
+            with st.spinner("Reading text..."):
+                temp_path = "temp_ocr.jpg"
+                image.save(temp_path)
+                ocr_results = reader.readtext(temp_path)
+                raw_text, _skipped = reason_ocr(ocr_results, min_confidence=0.5)
+                corrected_text, corrections = correct_ocr_text(raw_text)
+
+            if corrections:
+                st.info(f"Auto-corrected: {', '.join(f'{a} → {b}' for a, b in corrections)}")
+            st.success(f"**Spoken text:** {corrected_text}")
+            st.audio(speak(corrected_text), format="audio/mp3")
 
 # --- Tab 3: Currency Detection ---
 with tab3:
     st.subheader("Module 3 — Currency Detection")
     st.write("Identifies Indian currency notes (₹10–₹2000).")
 
-    model_currency = load_currency_model()
-    if model_currency is None:
-        st.warning(
-            "`currency_classifier.keras` not found in this folder. "
-            "Train it using the master notebook, then place the file next to `app.py` to enable this tab."
-        )
-    else:
-        uploaded_currency = st.file_uploader(
-            "Upload a photo of a currency note", type=["jpg", "jpeg", "png"], key="currency"
-        )
-        if uploaded_currency:
-            image = Image.open(uploaded_currency).convert("RGB")
-            st.image(image, caption="Uploaded note", use_container_width=True)
+    uploaded_currency = st.file_uploader(
+        "Upload a photo of a currency note", type=["jpg", "jpeg", "png"], key="currency"
+    )
+    if uploaded_currency:
+        image = Image.open(uploaded_currency).convert("RGB")
+        st.image(image, caption="Uploaded note", use_container_width=True)
 
+        with st.spinner("Loading currency model (first use only)..."):
+            model_currency, err = load_currency_model()
+
+        if err:
+            st.warning(err)
+        else:
             with st.spinner("Identifying denomination..."):
                 spoken, confidence, denom = predict_currency(model_currency, image)
 
@@ -240,6 +272,6 @@ with tab3:
 st.divider()
 st.caption(
     "VisionMate AI — built with YOLOv11n, EasyOCR, and a fine-tuned MobileNetV2. "
-    "See the [master notebook](../notebooks/VisionMate_Master.ipynb) for the full pipeline, "
-    "including Obstacle Warning and Multilingual Voice."
+    "Obstacle Warning (depth fusion) and Multilingual Voice run in the full Colab notebook — "
+    "they need heavier models (MiDaS, Whisper) not practical on free web hosting."
 )

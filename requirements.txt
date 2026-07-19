@@ -1,8 +1,11 @@
-streamlit>=1.35
-ultralytics==8.3.40
+streamlit
+ultralytics
+torch
+torchvision
 easyocr
 pyspellchecker
 gTTS
-tensorflow
-Pillow
+tensorflow-cpu
+opencv-python-headless
 numpy
+Pillow
